@@ -4,11 +4,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 
 const links = [
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/configuracion', label: 'Configuracion' },
   { href: '/escaneo', label: 'Escaneo' },
   { href: '/vulnerabilidades', label: 'Vulnerabilidades' },
   { href: '/reportes', label: 'Reportes' },
   { href: '/historial', label: 'Historial' },
+  { href: '/ai-analysis', label: 'Analisis IA' },
 ];
 
 export default function Nav() {
