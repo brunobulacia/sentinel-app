@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 
 const links = [
   { href: '/configuracion', label: 'Configuracion' },
@@ -12,12 +13,21 @@ const links = [
 
 export default function Nav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/login');
+  };
+
   return (
     <aside className="w-56 bg-gray-900 text-white flex flex-col shrink-0">
       <div className="p-4 border-b border-gray-700">
         <h1 className="text-xl font-bold text-blue-400">Sentinel</h1>
-        <p className="text-xs text-gray-400">Tigo Bolivia BOC</p>
+        <p className="text-xs text-gray-400">Seguridad Informatica</p>
       </div>
+
       <nav className="flex-1 p-2">
         {links.map((link) => (
           <Link
@@ -33,6 +43,19 @@ export default function Nav() {
           </Link>
         ))}
       </nav>
+
+      {user && (
+        <div className="p-3 border-t border-gray-700">
+          <p className="text-xs text-gray-300 font-medium truncate">{user.name}</p>
+          <p className="text-xs text-gray-500 truncate mb-2">{user.email}</p>
+          <button
+            onClick={handleLogout}
+            className="w-full text-xs bg-gray-800 hover:bg-red-900 text-gray-300 hover:text-red-300 py-1.5 rounded-md transition-colors"
+          >
+            Cerrar Sesion
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
