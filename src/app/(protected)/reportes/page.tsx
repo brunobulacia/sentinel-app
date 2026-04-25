@@ -49,9 +49,15 @@ export default function ReportesPage() {
     }
   };
 
-  const download = (reportId: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
-    window.open(`${baseUrl}/reports/${reportId}/download`, '_blank');
+  const download = async (reportId: string, title: string) => {
+    const res = await api.get(`/reports/${reportId}/download`, { responseType: 'blob' });
+    const blob = new Blob([res.data], { type: 'text/html; charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const deleteReport = async (id: string) => {
@@ -111,7 +117,7 @@ export default function ReportesPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => download(r.id)}
+                    onClick={() => download(r.id, r.title)}
                     className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-md text-xs hover:bg-blue-100 font-medium"
                   >
                     Descargar HTML
