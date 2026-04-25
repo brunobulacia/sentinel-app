@@ -66,6 +66,24 @@ export default function VulnerabilidadesPage() {
     await api.put(`/vulnerabilities/${v.id}`, { remediated: !v.remediated });
     loadVulns();
   };
+  const exportCsv = () => {
+    const headers = ['Nombre', 'Tipo', 'Criticidad', 'CVSS', 'URL Afectada', 'Estado', 'Descripcion', 'Recomendacion'];
+    const rows = vulns.map(v => [
+      v.name, v.type, v.criticality, v.cvssScore ?? '', v.affectedUrl,
+      v.remediated ? 'Remediado' : 'Pendiente', v.description, v.recommendation,
+    ]);
+    const csv = [headers, ...rows]
+      .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vulnerabilidades-${selectedId.slice(0, 8)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const runAiAnalysis = async () => {
     if (!selectedId) return;
     setAiLoading(true); setAiError(''); setAiResult(null);
@@ -134,10 +152,16 @@ export default function VulnerabilidadesPage() {
               <option value="LOW">Baja</option>
             </select>
           </div>
-          <button onClick={runAiAnalysis} disabled={aiLoading || vulns.length === 0}
-            className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
-            {aiLoading ? 'Analizando con IA...' : 'Analizar con Claude AI'}
-          </button>
+          <div className="flex gap-3">
+            <button onClick={exportCsv} disabled={vulns.length === 0}
+              className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
+              Exportar CSV
+            </button>
+            <button onClick={runAiAnalysis} disabled={aiLoading || vulns.length === 0}
+              className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
+              {aiLoading ? 'Analizando con IA...' : 'Analizar con Claude AI'}
+            </button>
+          </div>
         </div>
       )}
 

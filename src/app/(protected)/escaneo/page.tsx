@@ -28,9 +28,28 @@ export default function EscaneoPage() {
   const [recent, setRecent] = useState<Execution[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const startPolling = (id: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      const { data: updated } = await api.get(`/scan-executions/${id}`);
+      setExecution(updated);
+      if (updated.status === 'COMPLETED' || updated.status === 'FAILED') {
+        clearInterval(pollRef.current!);
+        pollRef.current = null;
+        const { data } = await api.get('/scan-executions');
+        setRecent(data.slice(0, 5));
+      }
+    }, 2000);
+  };
+
   const loadRecent = async () => {
     const { data } = await api.get('/scan-executions');
     setRecent(data.slice(0, 5));
+    const active = data.find((e: Execution) => e.status === 'RUNNING' || e.status === 'PENDING');
+    if (active && !pollRef.current) {
+      setExecution(active);
+      startPolling(active.id);
+    }
   };
 
   useEffect(() => {
@@ -43,14 +62,7 @@ export default function EscaneoPage() {
     if (!selectedConfig) return;
     const { data } = await api.post('/scan-executions', { scanConfigId: selectedConfig });
     setExecution(data);
-    pollRef.current = setInterval(async () => {
-      const { data: updated } = await api.get(`/scan-executions/${data.id}`);
-      setExecution(updated);
-      if (updated.status === 'COMPLETED' || updated.status === 'FAILED') {
-        clearInterval(pollRef.current!);
-        loadRecent();
-      }
-    }, 2000);
+    startPolling(data.id);
   };
 
   return (
