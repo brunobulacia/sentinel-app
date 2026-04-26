@@ -11,6 +11,7 @@ const links = [
   { href: '/reportes', label: 'Reportes' },
   { href: '/historial', label: 'Historial' },
   { href: '/ai-analysis', label: 'Analisis IA' },
+  { href: '/ml-analysis', label: 'Analisis ML' },
 ];
 
 export default function Nav() {
