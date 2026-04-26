@@ -12,9 +12,15 @@ interface Execution {
 
 interface MlPrediction {
   vuln_id: string | null;
-  criticality: 'HIGH' | 'MEDIUM' | 'LOW';
+  name: string;
+  type: string;
+  cvssScore: number | null;
+  affectedUrl: string;
+  currentCriticality: string | null;
+  mlCriticality: 'HIGH' | 'MEDIUM' | 'LOW';
   confidence: number;
   probabilities: Record<string, number>;
+  agreement: boolean;
 }
 
 interface MlResult {
@@ -157,12 +163,13 @@ export default function MlAnalysisPage() {
 
       {result && (
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             {[
               { label: 'Total', value: result.predictions.length, color: 'text-gray-700' },
-              { label: 'Alta', value: result.summary.HIGH, color: 'text-red-600' },
-              { label: 'Media', value: result.summary.MEDIUM, color: 'text-yellow-600' },
-              { label: 'Baja', value: result.summary.LOW, color: 'text-green-600' },
+              { label: 'Alta (ML)', value: result.summary.HIGH, color: 'text-red-600' },
+              { label: 'Media (ML)', value: result.summary.MEDIUM, color: 'text-yellow-600' },
+              { label: 'Baja (ML)', value: result.summary.LOW, color: 'text-green-600' },
+              { label: 'Discrepancias', value: result.predictions.filter(p => p.currentCriticality && !p.agreement).length, color: 'text-orange-500' },
             ].map(s => (
               <div key={s.label} className="bg-white rounded-lg shadow p-4 text-center">
                 <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
@@ -187,42 +194,61 @@ export default function MlAnalysisPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">ID Vuln</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Criticidad ML</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Vulnerabilidad</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">CVSS</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Clasificacion actual</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Prediccion ML</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Confianza</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Probabilidades</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Coincide</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {result.predictions.map((p, i) => (
                     <tr key={p.vuln_id ?? i} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-xs font-mono text-gray-400">
-                        {p.vuln_id ? `${p.vuln_id.slice(0, 8)}...` : `#${i + 1}`}
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-800 text-sm">{p.name}</p>
+                        <p className="text-xs text-gray-400 font-mono truncate max-w-48" title={p.affectedUrl}>
+                          {p.affectedUrl}
+                        </p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CRIT_STYLE[p.criticality]}`}>
-                          {p.criticality}
+                        <span className="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                          {p.type.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-mono text-gray-700">
+                        {p.cvssScore != null ? p.cvssScore.toFixed(1) : '—'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {p.currentCriticality ? (
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CRIT_STYLE[p.currentCriticality]}`}>
+                            {p.currentCriticality}
+                          </span>
+                        ) : <span className="text-gray-400 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${CRIT_STYLE[p.mlCriticality]}`}>
+                          {p.mlCriticality}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-100 rounded-full h-1.5">
+                          <div className="w-16 bg-gray-100 rounded-full h-1.5">
                             <div
-                              className={`${CRIT_BAR[p.criticality]} h-1.5 rounded-full`}
+                              className={`${CRIT_BAR[p.mlCriticality]} h-1.5 rounded-full`}
                               style={{ width: `${p.confidence * 100}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-600">{(p.confidence * 100).toFixed(0)}%</span>
+                          <span className="text-xs text-gray-600 whitespace-nowrap">{(p.confidence * 100).toFixed(0)}%</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-3 text-xs">
-                          {Object.entries(p.probabilities).map(([cls, prob]) => (
-                            <span key={cls} className="text-gray-500">
-                              {cls}: <strong>{(prob * 100).toFixed(0)}%</strong>
-                            </span>
-                          ))}
-                        </div>
+                      <td className="px-4 py-3 text-center">
+                        {p.currentCriticality ? (
+                          <span className={`text-xs font-bold ${p.agreement ? 'text-green-600' : 'text-orange-500'}`}>
+                            {p.agreement ? '✓' : '≠'}
+                          </span>
+                        ) : <span className="text-gray-300 text-xs">—</span>}
                       </td>
                     </tr>
                   ))}
