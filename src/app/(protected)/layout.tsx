@@ -14,8 +14,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-blue-400 text-lg font-semibold">Cargando...</div>
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
+        <div className="text-neon-cyan text-lg font-mono font-semibold tracking-widest animate-pulse">
+          INICIANDO SISTEMA...
+        </div>
       </div>
     );
   }
@@ -23,9 +25,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="flex h-screen bg-gray-100 overflow-hidden">
+    <div className="flex h-screen overflow-hidden text-slate-200">
       <Nav />
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+      <main className="flex-1 overflow-auto p-8">{children}</main>
     </div>
   );
 }

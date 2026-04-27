@@ -1,6 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Bot, AlertTriangle, ShieldAlert, Cpu, Sparkles, Activity, Layers, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Execution {
   id: string;
@@ -44,22 +47,22 @@ interface AnalysisResult {
 }
 
 const RISK_STYLE: Record<string, string> = {
-  CRITICAL: 'bg-red-100 text-red-800 border border-red-300',
-  HIGH: 'bg-orange-100 text-orange-800 border border-orange-300',
-  MEDIUM: 'bg-yellow-100 text-yellow-800 border border-yellow-300',
-  LOW: 'bg-green-100 text-green-800 border border-green-300',
+  CRITICAL: 'bg-red-500/20 text-red-400 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)]',
+  HIGH: 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.3)]',
+  MEDIUM: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.3)]',
+  LOW: 'bg-green-500/20 text-green-400 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)]',
 };
 
 const LIKELIHOOD_DOT: Record<string, string> = {
-  HIGH: 'bg-red-500',
-  MEDIUM: 'bg-yellow-500',
-  LOW: 'bg-green-500',
+  HIGH: 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]',
+  MEDIUM: 'bg-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.8)]',
+  LOW: 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]',
 };
 
 const EFFORT_BADGE: Record<string, string> = {
-  LOW: 'bg-green-100 text-green-700',
-  MEDIUM: 'bg-yellow-100 text-yellow-700',
-  HIGH: 'bg-red-100 text-red-700',
+  LOW: 'bg-green-500/20 text-green-400 border border-green-500/30',
+  MEDIUM: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
+  HIGH: 'bg-red-500/20 text-red-400 border border-red-500/30',
 };
 
 export default function AiAnalysisPage() {
@@ -84,7 +87,7 @@ export default function AiAnalysisPage() {
       const res = await api.get(`/ai-analysis/${selectedId}`);
       setResult(res.data);
     } catch {
-      setError('Error al conectar con el servicio de IA. Verifica que ANTHROPIC_API_KEY este configurado en el servidor.');
+      setError('Error al conectar con el servicio de IA. Verifica que ANTHROPIC_API_KEY esté configurado en el servidor.');
     } finally {
       setAnalyzing(false);
     }
@@ -92,22 +95,43 @@ export default function AiAnalysisPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Analisis con Inteligencia Artificial</h2>
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex items-center gap-3 mb-6"
+      >
+        <div className="p-2 bg-neon-cyan/20 rounded-lg border border-neon-cyan/50 relative">
+          <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-white animate-pulse" />
+          <Bot className="w-6 h-6 text-neon-cyan" />
+        </div>
+        <h2 className="text-2xl font-bold text-white tracking-wider drop-shadow-[0_0_8px_rgba(0,255,255,0.5)]">
+          Análisis LLM <span className="text-gray-500 font-light text-xl">| Claude Security Expert</span>
+        </h2>
+      </motion.div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-2">Seleccionar Escaneo</h3>
-        <p className="text-sm text-gray-500 mb-4">
-          Elige un escaneo completado para que la IA analice las vulnerabilidades, detecte riesgos adicionales y priorice la remediacion.
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-panel p-6 border-l-4 border-l-neon-cyan relative overflow-hidden"
+      >
+        <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-neon-cyan/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <h3 className="text-lg font-semibold mb-2 text-gray-200 flex items-center gap-2">
+          <Activity className="w-5 h-5 text-neon-cyan" />
+          Contexto de Análisis
+        </h3>
+        <p className="text-sm text-gray-400 mb-6">
+          La Inteligencia Artificial correlacionará las vulnerabilidades detectadas, infiriendo el stack tecnológico, prediciendo vectores de ataque compuestos y diseñando un plan de remediación óptimo.
         </p>
-        <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
           <select
             value={selectedId}
             onChange={e => { setSelectedId(e.target.value); setResult(null); setError(''); }}
-            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 bg-black/50 border border-gray-700/50 rounded-md px-4 py-3 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 focus:border-neon-cyan transition-all"
           >
-            <option value="">Seleccionar ejecucion completada...</option>
+            <option value="" className="bg-gray-900 text-gray-400">Seleccionar ejecución completada...</option>
             {executions.map(e => (
-              <option key={e.id} value={e.id}>
+              <option key={e.id} value={e.id} className="bg-gray-900 text-gray-200">
                 {e.scanConfig?.name} — {e.scanConfig?.targetUrl} — {e.totalVulnerabilities} vulns
               </option>
             ))}
@@ -115,121 +139,225 @@ export default function AiAnalysisPage() {
           <button
             onClick={analyze}
             disabled={!selectedId || analyzing}
-            className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium whitespace-nowrap"
+            className={cn(
+              "flex items-center justify-center gap-2 px-6 py-3 rounded-md text-sm font-medium transition-all min-w-[200px]",
+              !selectedId || analyzing
+                ? "bg-gray-800/50 text-gray-500 cursor-not-allowed border border-gray-700/50"
+                : "bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50 hover:bg-neon-cyan hover:text-black hover:shadow-[0_0_15px_rgba(0,255,255,0.5)]"
+            )}
           >
-            {analyzing ? 'Analizando...' : 'Analizar con IA'}
+            {analyzing ? (
+              <>
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <span>Analizando...</span>
+              </>
+            ) : (
+              <>
+                <Bot className="w-4 h-4" />
+                <span>Procesar con IA</span>
+              </>
+            )}
           </button>
         </div>
         {executions.length === 0 && (
-          <p className="text-sm text-gray-400 mt-3">No hay ejecuciones completadas disponibles.</p>
+          <p className="text-sm text-gray-400/70 mt-4 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" /> No hay ejecuciones completadas disponibles.
+          </p>
         )}
-      </div>
+      </motion.div>
 
-      {analyzing && (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <div className="inline-block w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-gray-600 font-medium">La IA esta analizando las vulnerabilidades...</p>
-          <p className="text-sm text-gray-400 mt-1">Esto puede tomar unos segundos.</p>
-        </div>
-      )}
+      <AnimatePresence mode="wait">
+        {analyzing && (
+          <motion.div 
+            key="analyzing"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="glass-panel p-16 text-center border border-neon-cyan/30"
+          >
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <div className="absolute inset-0 border-4 border-neon-cyan/20 rounded-full" />
+              <div className="absolute inset-0 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,255,255,0.5)]" style={{ animationDuration: '3s' }} />
+              <div className="absolute inset-2 border-4 border-neon-purple/30 border-b-transparent rounded-full animate-spin-reverse" style={{ animationDuration: '2s' }} />
+              <Bot className="absolute inset-0 m-auto w-10 h-10 text-neon-cyan animate-pulse" />
+            </div>
+            <h3 className="text-xl font-bold text-white tracking-wide mb-2">Sintetizando Inteligencia de Amenazas</h3>
+            <p className="text-neon-cyan/70 font-mono text-sm max-w-md mx-auto">
+              Analizando vectores de ataque, correlacionando vulnerabilidades y formulando estrategias de remediación...
+            </p>
+          </motion.div>
+        )}
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
-          {error}
-        </div>
-      )}
+        {error && (
+          <motion.div 
+            key="error"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 flex items-start gap-3"
+          >
+            <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <p className="text-red-400 text-sm">{error}</p>
+          </motion.div>
+        )}
 
-      {result && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">Resultado del Analisis</h3>
-                <p className="text-sm text-gray-500">{result.targetUrl} · {new Date(result.scannedAt).toLocaleString()}</p>
+        {result && !analyzing && (
+          <motion.div 
+            key="results"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="glass-panel p-6 border-t-2 border-t-neon-cyan">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-1">
+                    <Sparkles className="w-5 h-5 text-neon-cyan" />
+                    Síntesis Estratégica
+                  </h3>
+                  <p className="text-sm text-gray-400 font-mono">
+                    <span className="text-neon-cyan">{result.targetUrl}</span> <span className="mx-2 text-gray-600">|</span> {new Date(result.scannedAt).toLocaleString()}
+                  </p>
+                </div>
+                <div className={cn("px-4 py-2 rounded border flex flex-col items-center justify-center min-w-[120px]", RISK_STYLE[result.analysis.riskLevel])}>
+                  <span className="text-xs uppercase tracking-widest opacity-80 mb-0.5">Nivel de Riesgo</span>
+                  <span className="font-bold tracking-wider">{result.analysis.riskLevel}</span>
+                </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-sm font-bold ${RISK_STYLE[result.analysis.riskLevel]}`}>
-                Riesgo: {result.analysis.riskLevel}
-              </span>
-            </div>
-            <div className="flex gap-6 text-sm mb-4 bg-gray-50 rounded-lg p-3">
-              <span className="text-gray-600">Total: <strong>{result.vulnCounts.total}</strong></span>
-              <span className="text-red-600">Alta: <strong>{result.vulnCounts.high}</strong></span>
-              <span className="text-yellow-600">Media: <strong>{result.vulnCounts.medium}</strong></span>
-              <span className="text-green-600">Baja: <strong>{result.vulnCounts.low}</strong></span>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Resumen Ejecutivo</p>
-                <p className="text-sm text-gray-700">{result.analysis.summary}</p>
+              
+              <div className="flex flex-wrap gap-4 text-sm mb-6 bg-black/40 border border-gray-800/60 rounded-lg p-4">
+                <div className="flex items-center gap-2 pr-4 border-r border-gray-800">
+                  <span className="text-gray-500 uppercase tracking-wider text-xs">Total</span>
+                  <strong className="text-white text-lg font-mono">{result.vulnCounts.total}</strong>
+                </div>
+                <div className="flex items-center gap-2 pr-4 border-r border-gray-800">
+                  <span className="text-red-500/70 uppercase tracking-wider text-xs">Alta</span>
+                  <strong className="text-red-400 text-lg font-mono">{result.vulnCounts.high}</strong>
+                </div>
+                <div className="flex items-center gap-2 pr-4 border-r border-gray-800">
+                  <span className="text-yellow-500/70 uppercase tracking-wider text-xs">Media</span>
+                  <strong className="text-yellow-400 text-lg font-mono">{result.vulnCounts.medium}</strong>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500/70 uppercase tracking-wider text-xs">Baja</span>
+                  <strong className="text-green-400 text-lg font-mono">{result.vulnCounts.low}</strong>
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Stack Detectado</p>
-                <p className="text-sm text-gray-700">{result.analysis.stackAnalysis}</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-black/30 border border-gray-800/50 rounded-lg p-5">
+                  <p className="text-xs font-semibold text-neon-cyan uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Activity className="w-4 h-4" /> Resumen Ejecutivo
+                  </p>
+                  <p className="text-sm text-gray-300 leading-relaxed">{result.analysis.summary}</p>
+                </div>
+                <div className="bg-black/30 border border-gray-800/50 rounded-lg p-5">
+                  <p className="text-xs font-semibold text-neon-purple uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <Layers className="w-4 h-4" /> Stack Tecnológico Inferido
+                  </p>
+                  <p className="text-sm text-gray-300 leading-relaxed font-mono">{result.analysis.stackAnalysis}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {result.analysis.attackScenarios.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-3">Escenarios de Ataque</h3>
-              <ul className="space-y-2">
-                {result.analysis.attackScenarios.map((s, i) => (
-                  <li key={i} className="flex gap-3 text-sm text-gray-700">
-                    <span className="text-red-500 font-bold mt-0.5">⚠</span>
-                    <span>{s}</span>
-                  </li>
-                ))}
-              </ul>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {result.analysis.attackScenarios.length > 0 && (
+                <div className="glass-panel p-6 border-t-2 border-t-red-500/50">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-red-500" />
+                    Vectores de Ataque Compuestos
+                  </h3>
+                  <ul className="space-y-3">
+                    {result.analysis.attackScenarios.map((s, i) => (
+                      <motion.li 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        key={i} 
+                        className="flex gap-3 text-sm text-gray-300 bg-red-500/5 border border-red-500/10 p-3 rounded-md"
+                      >
+                        <ArrowRight className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                        <span className="leading-relaxed">{s}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {result.analysis.remediationPriority.length > 0 && (
+                <div className="glass-panel p-6 border-t-2 border-t-neon-purple">
+                  <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-neon-purple" />
+                    Plan de Remediación Táctico
+                  </h3>
+                  <div className="space-y-3">
+                    {result.analysis.remediationPriority.map((r, i) => (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        key={i} 
+                        className="flex gap-4 items-start bg-black/40 border border-gray-800/60 p-3 rounded-lg hover:border-neon-purple/30 transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/50 text-sm font-bold font-mono flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(188,19,254,0.2)]">
+                          {r.order}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <p className="text-sm font-bold text-gray-200">{r.action}</p>
+                            <span className={cn("text-xs px-2 py-0.5 rounded font-mono", EFFORT_BADGE[r.effort])}>
+                              Esfuerzo: {r.effort}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 leading-relaxed">{r.impact}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
 
-          {result.analysis.remediationPriority.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-3">Plan de Remediacion Priorizado</h3>
-              <div className="space-y-3">
-                {result.analysis.remediationPriority.map((r, i) => (
-                  <div key={i} className="flex gap-4 items-start">
-                    <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-700 text-sm font-bold flex items-center justify-center shrink-0">
-                      {r.order}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <p className="text-sm font-medium text-gray-800">{r.action}</p>
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${EFFORT_BADGE[r.effort]}`}>
-                          Esfuerzo: {r.effort}
-                        </span>
+            {result.analysis.additionalVulnerabilities.length > 0 && (
+              <div className="glass-panel p-6 border-t-2 border-t-yellow-500/50">
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                  Vulnerabilidades Latentes Inferidas
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Riesgos que la IA considera altamente probables basándose en el patrón de vulnerabilidades detectadas, aunque no hayan sido confirmados directamente.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {result.analysis.additionalVulnerabilities.map((v, i) => (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.1 }}
+                      key={i} 
+                      className="bg-black/40 border border-gray-800/60 rounded-lg p-5 hover:border-yellow-500/30 transition-colors"
+                    >
+                      <div className="flex flex-wrap items-center gap-3 mb-3 border-b border-gray-800 pb-3">
+                        <span className={cn("w-2.5 h-2.5 rounded-full animate-pulse", LIKELIHOOD_DOT[v.likelihood])} />
+                        <p className="text-sm font-bold text-white">{v.name}</p>
+                        <span className="text-xs font-mono text-gray-500 px-2 py-0.5 bg-gray-900 rounded">{v.type}</span>
+                        <span className="text-xs text-gray-400 ml-auto font-mono">Probabilidad: <span className="text-gray-300">{v.likelihood}</span></span>
                       </div>
-                      <p className="text-xs text-gray-500">{r.impact}</p>
-                    </div>
-                  </div>
-                ))}
+                      <p className="text-sm text-gray-300 mb-3 leading-relaxed">{v.description}</p>
+                      <div className="space-y-2 text-xs">
+                        <p className="bg-gray-900/50 p-2 rounded text-gray-400 border border-gray-800/50">
+                          <strong className="text-gray-300 block mb-1">Razón de la Inferencia:</strong> {v.reason}
+                        </p>
+                        <p className="bg-neon-cyan/5 p-2 rounded text-gray-300 border border-neon-cyan/20">
+                          <strong className="text-neon-cyan block mb-1">Recomendación Proactiva:</strong> {v.recommendation}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          {result.analysis.additionalVulnerabilities.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-3">Vulnerabilidades Adicionales Probables</h3>
-              <p className="text-xs text-gray-400 mb-4">Riesgos que la IA detecta como probables aunque no fueron encontrados directamente en el escaneo.</p>
-              <div className="space-y-4">
-                {result.analysis.additionalVulnerabilities.map((v, i) => (
-                  <div key={i} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`w-2 h-2 rounded-full ${LIKELIHOOD_DOT[v.likelihood]}`} />
-                      <p className="text-sm font-semibold text-gray-800">{v.name}</p>
-                      <span className="text-xs text-gray-400">({v.type})</span>
-                      <span className="text-xs text-gray-400 ml-auto">Probabilidad: {v.likelihood}</span>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-1">{v.description}</p>
-                    <p className="text-xs text-gray-500 mb-1"><strong>Por que:</strong> {v.reason}</p>
-                    <p className="text-xs text-blue-700 bg-blue-50 rounded px-2 py-1"><strong>Recomendacion:</strong> {v.recommendation}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

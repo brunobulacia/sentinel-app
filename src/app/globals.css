@@ -1,1 +1,65 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-cyber-black: #000000;
+  --color-cyber-dark: #020617;
+  --color-cyber-surface: #0f172a;
+  
+  --color-neon-cyan: #06b6d4;
+  --color-neon-purple: #a855f7;
+  --color-neon-red: #ef4444;
+  --color-neon-green: #22c55e;
+  --color-neon-yellow: #eab308;
+}
+
+@layer base {
+  :root {
+    --background: #020617;
+    --foreground: #e2e8f0;
+  }
+  
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    background-image: 
+      linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+    background-position: center center;
+    background-attachment: fixed;
+  }
+
+  /* Scrollbar futurista */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #020617;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 240, 255, 0.3);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 240, 255, 0.6);
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-slate-900/40 backdrop-blur-md border border-slate-700/50 shadow-lg;
+  }
+  .neon-border-cyan {
+    @apply border border-neon-cyan/50 shadow-[0_0_15px_rgba(0,240,255,0.2)];
+  }
+  .neon-text-cyan {
+    @apply text-neon-cyan drop-shadow-[0_0_8px_rgba(0,240,255,0.8)];
+  }
+  .neon-text-red {
+    @apply text-neon-red drop-shadow-[0_0_8px_rgba(255,0,60,0.8)];
+  }
+}

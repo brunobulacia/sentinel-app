@@ -1,6 +1,8 @@
-﻿'use client';
+'use client';
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { ShieldAlert, Download, Brain, ChevronRight, ChevronDown, AlertCircle, AlertTriangle, Info, CheckCircle, Terminal } from 'lucide-react';
 
 interface Execution {
   id: string; status: string; totalVulnerabilities: number; createdAt: string;
@@ -19,10 +21,29 @@ interface AiAnalysis {
   analysis: { summary: string; riskLevel: string; stackAnalysis: string; additionalVulnerabilities: AiVuln[]; remediationPriority: AiRemediation[]; attackScenarios: string[]; };
 }
 
-const CRIT_STYLE: Record<string, string> = { HIGH: 'bg-red-100 text-red-700 border border-red-200', MEDIUM: 'bg-yellow-100 text-yellow-700 border border-yellow-200', LOW: 'bg-green-100 text-green-700 border border-green-200' };
-const CRIT_DOT: Record<string, string> = { HIGH: 'bg-red-500', MEDIUM: 'bg-yellow-500', LOW: 'bg-green-500' };
-const RISK_STYLE: Record<string, string> = { CRITICAL: 'bg-red-600 text-white', HIGH: 'bg-orange-500 text-white', MEDIUM: 'bg-yellow-500 text-white', LOW: 'bg-green-500 text-white' };
-const EFFORT_STYLE: Record<string, string> = { HIGH: 'text-red-600', MEDIUM: 'text-yellow-600', LOW: 'text-green-600' };
+const CRIT_COLORS: Record<string, { bg: string, border: string, text: string, icon: any }> = {
+  HIGH: { bg: 'bg-red-500/10', border: 'border-red-500/50', text: 'text-red-400', icon: AlertCircle },
+  MEDIUM: { bg: 'bg-orange-500/10', border: 'border-orange-500/50', text: 'text-orange-400', icon: AlertTriangle },
+  LOW: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/50', text: 'text-cyan-400', icon: Info }
+};
+
+const RISK_STYLE: Record<string, string> = { 
+  CRITICAL: 'bg-red-600/20 text-red-400 border-red-500', 
+  HIGH: 'bg-orange-500/20 text-orange-400 border-orange-500', 
+  MEDIUM: 'bg-yellow-500/20 text-yellow-400 border-yellow-500', 
+  LOW: 'bg-cyan-500/20 text-cyan-400 border-cyan-500' 
+};
+const EFFORT_STYLE: Record<string, string> = { HIGH: 'text-red-400', MEDIUM: 'text-orange-400', LOW: 'text-cyan-400' };
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+
+const itemVariants: Variants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } }
+};
 
 export default function VulnerabilidadesPage() {
   const [executions, setExecutions] = useState<Execution[]>([]);
@@ -50,8 +71,12 @@ export default function VulnerabilidadesPage() {
     setAiResult(null);
     const params: Record<string, string> = { executionId: selectedId };
     if (filterCriticality) params.criticality = filterCriticality;
-    const { data } = await api.get('/vulnerabilities', { params });
-    setVulns(data);
+    try {
+      const { data } = await api.get('/vulnerabilities', { params });
+      setVulns(data);
+    } catch (e) {
+      console.error(e);
+    }
     setLoading(false);
   }, [selectedId, filterCriticality]);
 
@@ -75,7 +100,7 @@ export default function VulnerabilidadesPage() {
     const csv = [headers, ...rows]
       .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -101,234 +126,301 @@ export default function VulnerabilidadesPage() {
   const remediatedCount = vulns.filter((v) => v.remediated).length;
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Clasificacion de Vulnerabilidades</h2>
-
-      {/* Execution Selector */}
-      <div className="bg-white rounded-lg shadow p-5">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Escaneo a analizar</label>
-        {executions.length === 0 ? (
-          <p className="text-sm text-gray-400">No hay escaneos completados. Ejecuta un escaneo primero.</p>
-        ) : (
-          <select value={selectedId} onChange={(e) => { setSelectedId(e.target.value); setFilterCriticality(''); }}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            {executions.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.scanConfig.name} — {e.scanConfig.targetUrl} — {new Date(e.createdAt).toLocaleString()} — {e.totalVulnerabilities} vulns
-              </option>
-            ))}
-          </select>
-        )}
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants} 
+      className="space-y-6 text-gray-200"
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <ShieldAlert className="w-8 h-8 text-cyan-400" />
+        <h2 className="text-3xl font-bold tracking-tight text-white drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">
+          CLASIFICACIÓN DE VULNERABILIDADES
+        </h2>
       </div>
 
-      {/* Stats */}
+      {/* Selector and Filters */}
+      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 glass-panel p-6 rounded-xl border border-cyan-500/20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl" />
+          <label className="block text-xs font-mono text-cyan-400 mb-2 uppercase tracking-wider">Escaneo Objetivo [OBJ-SCAN]</label>
+          {executions.length === 0 ? (
+            <p className="text-sm text-gray-500 font-mono">NO HAY REGISTROS DE ESCANEO COMPLETADOS.</p>
+          ) : (
+            <select 
+              value={selectedId} 
+              onChange={(e) => { setSelectedId(e.target.value); setFilterCriticality(''); }}
+              className="w-full bg-slate-900/50 border border-slate-700 rounded-md px-4 py-3 text-sm text-gray-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors font-mono"
+            >
+              {executions.map((e) => (
+                <option key={e.id} value={e.id} className="bg-slate-900">
+                  {e.scanConfig.name} — {e.scanConfig.targetUrl} — {new Date(e.createdAt).toLocaleString()} — [{e.totalVulnerabilities} VULNS]
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <div className="glass-panel p-6 rounded-xl border border-purple-500/20 relative overflow-hidden flex flex-col justify-end">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl" />
+          <label className="block text-xs font-mono text-purple-400 mb-2 uppercase tracking-wider">Filtro Criticidad</label>
+          <select 
+            value={filterCriticality} 
+            onChange={(e) => setFilterCriticality(e.target.value)}
+            className="w-full bg-slate-900/50 border border-slate-700 rounded-md px-4 py-3 text-sm text-gray-200 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors font-mono"
+          >
+            <option value="" className="bg-slate-900">[*] TODAS</option>
+            <option value="HIGH" className="bg-slate-900">[!] ALTA</option>
+            <option value="MEDIUM" className="bg-slate-900">[-] MEDIA</option>
+            <option value="LOW" className="bg-slate-900">[v] BAJA</option>
+          </select>
+        </div>
+      </motion.div>
+
+      {/* Stats HUD */}
       {selectedId && (
-        <div className="grid grid-cols-5 gap-3">
+        <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
-            { label: 'Total', value: vulns.length, color: 'text-gray-700' },
-            { label: 'Alta', value: highCount, color: 'text-red-600' },
-            { label: 'Media', value: mediumCount, color: 'text-yellow-600' },
-            { label: 'Baja', value: lowCount, color: 'text-green-600' },
-            { label: 'Remediadas', value: remediatedCount, color: 'text-blue-600' },
+            { label: 'TOTAL VULNS', value: vulns.length, color: 'text-cyan-400', border: 'border-cyan-500/30' },
+            { label: 'CRÍTICA/ALTA', value: highCount, color: 'text-red-400', border: 'border-red-500/30' },
+            { label: 'MEDIA', value: mediumCount, color: 'text-orange-400', border: 'border-orange-500/30' },
+            { label: 'BAJA', value: lowCount, color: 'text-green-400', border: 'border-green-500/30' },
+            { label: 'REMEDIADAS', value: remediatedCount, color: 'text-purple-400', border: 'border-purple-500/30' },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-lg shadow p-4 text-center">
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+            <div key={s.label} className={`glass-panel rounded-lg p-4 border-l-4 ${s.border} text-center relative overflow-hidden group`}>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent z-0" />
+              <div className="relative z-10">
+                <p className={`text-3xl font-bold font-mono ${s.color} drop-shadow-[0_0_5px_currentColor]`}>{s.value}</p>
+                <p className="text-xs text-gray-400 mt-1 font-mono">{s.label}</p>
+              </div>
             </div>
           ))}
-        </div>
+        </motion.div>
       )}
 
-      {/* Filters + AI button */}
+      {/* Actions */}
       {selectedId && (
-        <div className="bg-white rounded-lg shadow p-4 flex flex-wrap gap-4 items-end justify-between">
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Criticidad</label>
-            <select value={filterCriticality} onChange={(e) => setFilterCriticality(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Todas</option>
-              <option value="HIGH">Alta</option>
-              <option value="MEDIUM">Media</option>
-              <option value="LOW">Baja</option>
-            </select>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={exportCsv} disabled={vulns.length === 0}
-              className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
-              Exportar CSV
-            </button>
-            <button onClick={runAiAnalysis} disabled={aiLoading || vulns.length === 0}
-              className="flex items-center gap-2 bg-purple-600 text-white px-5 py-2 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-colors">
-              {aiLoading ? 'Analizando con IA...' : 'Analizar con Claude AI'}
-            </button>
-          </div>
-        </div>
+        <motion.div variants={itemVariants} className="flex flex-wrap gap-4 items-center justify-end">
+          <button onClick={exportCsv} disabled={vulns.length === 0}
+            className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-700/80 border border-cyan-500/50 text-cyan-400 px-5 py-2.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-sm font-mono transition-all hover:shadow-[0_0_10px_rgba(34,211,238,0.3)]">
+            <Download className="w-4 h-4" /> EXPORTAR CSV
+          </button>
+          <button onClick={runAiAnalysis} disabled={aiLoading || vulns.length === 0}
+            className="flex items-center gap-2 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 text-purple-300 px-5 py-2.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-sm font-mono transition-all hover:shadow-[0_0_15px_rgba(168,85,247,0.4)]">
+            <Brain className="w-4 h-4" />
+            {aiLoading ? 'ANALIZANDO RED NEURONAL...' : 'INICIAR ANÁLISIS AI'}
+          </button>
+        </motion.div>
       )}
 
       {/* Vulnerability Table */}
-      {loading ? (
-        <p className="text-gray-500">Cargando vulnerabilidades...</p>
-      ) : vulns.length === 0 && selectedId ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
-          No se encontraron vulnerabilidades{filterCriticality ? ` con criticidad ${filterCriticality}` : ''}.
-        </div>
-      ) : vulns.length > 0 ? (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="w-8 px-4 py-3" />
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Vulnerabilidad</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Criticidad</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">CVSS</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {vulns.flatMap((v) => {
-                const rows = [(
-                  <tr key={v.id} className={`hover:bg-gray-50 cursor-pointer transition-colors ${v.remediated ? 'opacity-60' : ''}`}
-                    onClick={() => setExpandedId(expandedId === v.id ? null : v.id)}>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{expandedId === v.id ? 'v' : '>'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${CRIT_DOT[v.criticality]}`} />
-                        <p className="font-medium text-gray-800">{v.name}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{v.type.replace(/_/g, ' ')}</td>
-                    <td className="px-4 py-3">
-                      {editingId === v.id ? (
-                        <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                          {['HIGH', 'MEDIUM', 'LOW'].map((c) => (
-                            <button key={c} onClick={() => reclassify(v.id, c)} className={`px-2 py-0.5 rounded text-xs font-medium ${CRIT_STYLE[c]}`}>{c}</button>
-                          ))}
-                          <button onClick={() => setEditingId(null)} className="text-xs text-gray-400 px-1">x</button>
-                        </div>
-                      ) : (
-                        <button onClick={(e) => { e.stopPropagation(); setEditingId(v.id); }} className={`px-2 py-0.5 rounded text-xs font-medium ${CRIT_STYLE[v.criticality]}`}>
-                          {v.criticality}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 font-mono text-xs">{v.cvssScore?.toFixed(1) ?? '-'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium ${v.remediated ? 'text-green-600' : 'text-orange-500'}`}>
-                        {v.remediated ? 'Remediado' : 'Pendiente'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <button onClick={() => toggleRemediated(v)} className={`text-xs px-3 py-1 rounded-md ${v.remediated ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}>
-                        {v.remediated ? 'Desmarcar' : 'Marcar remediado'}
-                      </button>
-                    </td>
-                  </tr>
-                )];
-                if (expandedId === v.id) {
-                  rows.push(
-                    <tr key={`${v.id}-detail`}>
-                      <td colSpan={7} className="px-6 py-4 bg-blue-50 border-b border-blue-100">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">URL Afectada</p>
-                            <p className="text-xs text-gray-700 font-mono bg-white rounded px-2 py-1 border border-gray-200 break-all">{v.affectedUrl}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Descripcion</p>
-                            <p className="text-xs text-gray-700 leading-relaxed">{v.description}</p>
-                          </div>
-                          <div className="md:col-span-2">
-                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Recomendacion de Remediacion</p>
-                            <p className="text-xs text-gray-700 leading-relaxed bg-white rounded px-3 py-2 border border-green-200">{v.recommendation}</p>
-                          </div>
+      <motion.div variants={itemVariants} className="glass-panel rounded-xl border border-slate-700/50 overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-cyan-500 font-mono flex items-center justify-center gap-3">
+            <div className="w-4 h-4 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+            DESCARGANDO DATOS DE TELEMETRÍA...
+          </div>
+        ) : vulns.length === 0 && selectedId ? (
+          <div className="p-8 text-center text-gray-500 font-mono">
+            [+] SISTEMA LIMPIO. NO SE ENCONTRARON VULNERABILIDADES{filterCriticality ? ` CON CRITICIDAD ${filterCriticality}` : ''}.
+          </div>
+        ) : vulns.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-slate-900/80 border-b border-slate-700 font-mono text-xs text-gray-400">
+                <tr>
+                  <th className="w-10 px-4 py-4" />
+                  <th className="px-4 py-4 uppercase tracking-wider">Vulnerabilidad</th>
+                  <th className="px-4 py-4 uppercase tracking-wider">Tipo</th>
+                  <th className="px-4 py-4 uppercase tracking-wider">Criticidad</th>
+                  <th className="px-4 py-4 uppercase tracking-wider">CVSS</th>
+                  <th className="px-4 py-4 uppercase tracking-wider">Estado</th>
+                  <th className="px-4 py-4 uppercase tracking-wider text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/50">
+                {vulns.flatMap((v) => {
+                  const style = CRIT_COLORS[v.criticality] || CRIT_COLORS.LOW;
+                  const Icon = style.icon;
+                  const rows = [(
+                    <tr key={v.id} className={`hover:bg-slate-800/30 cursor-pointer transition-colors ${v.remediated ? 'opacity-40 grayscale' : ''}`}
+                      onClick={() => setExpandedId(expandedId === v.id ? null : v.id)}>
+                      <td className="px-4 py-4 text-cyan-500">
+                        {expandedId === v.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <Icon className={`w-4 h-4 ${style.text}`} />
+                          <p className="font-medium text-gray-200">{v.name}</p>
                         </div>
                       </td>
+                      <td className="px-4 py-4 text-gray-400 text-xs font-mono whitespace-nowrap">{v.type.replace(/_/g, ' ')}</td>
+                      <td className="px-4 py-4">
+                        {editingId === v.id ? (
+                          <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                            {['HIGH', 'MEDIUM', 'LOW'].map((c) => (
+                              <button key={c} onClick={() => reclassify(v.id, c)} className={`px-2 py-1 rounded text-xs font-mono font-medium ${CRIT_COLORS[c].bg} ${CRIT_COLORS[c].text} border ${CRIT_COLORS[c].border}`}>{c}</button>
+                            ))}
+                            <button onClick={() => setEditingId(null)} className="text-xs text-gray-400 px-2 hover:text-white">✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={(e) => { e.stopPropagation(); setEditingId(v.id); }} className={`px-2.5 py-1 rounded-sm text-xs font-mono font-bold ${style.bg} ${style.text} border ${style.border}`}>
+                            [{v.criticality}]
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-cyan-400 font-mono text-xs">{v.cvssScore?.toFixed(1) ?? '-'}</td>
+                      <td className="px-4 py-4">
+                        <span className={`text-xs font-mono px-2 py-1 rounded-sm border ${v.remediated ? 'bg-green-500/10 text-green-400 border-green-500/30' : 'bg-orange-500/10 text-orange-400 border-orange-500/30'}`}>
+                          {v.remediated ? 'SECURED' : 'EXPOSED'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => toggleRemediated(v)} className={`text-xs font-mono px-3 py-1.5 rounded-sm transition-all border ${v.remediated ? 'bg-slate-800 text-gray-400 border-slate-600 hover:bg-slate-700' : 'bg-green-600/20 text-green-400 border-green-500/50 hover:bg-green-600/30 hover:shadow-[0_0_10px_rgba(34,197,94,0.3)]'}`}>
+                          {v.remediated ? 'REABRIR' : 'PARCHEAR'}
+                        </button>
+                      </td>
                     </tr>
-                  );
-                }
-                return rows;
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+                  )];
+                  if (expandedId === v.id) {
+                    rows.push(
+                      <tr key={`${v.id}-detail`}>
+                        <td colSpan={7} className="p-0 border-b border-slate-700/50">
+                          <AnimatePresence>
+                            <motion.div 
+                              initial={{ height: 0, opacity: 0 }} 
+                              animate={{ height: 'auto', opacity: 1 }} 
+                              exit={{ height: 0, opacity: 0 }}
+                              className="bg-slate-900/60 p-6 overflow-hidden"
+                            >
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                  <p className="text-xs font-mono text-cyan-500 mb-2 flex items-center gap-2"><Terminal className="w-3 h-3"/> VECTOR DE ATAQUE</p>
+                                  <p className="text-xs text-gray-300 font-mono bg-black/50 rounded-md px-3 py-2 border border-slate-700 break-all">{v.affectedUrl}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-mono text-cyan-500 mb-2 flex items-center gap-2"><Info className="w-3 h-3"/> ANÁLISIS TÉCNICO</p>
+                                  <p className="text-xs text-gray-300 leading-relaxed font-sans">{v.description}</p>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <p className="text-xs font-mono text-green-400 mb-2 flex items-center gap-2"><CheckCircle className="w-3 h-3"/> PROTOCOLO DE MITIGACIÓN</p>
+                                  <p className="text-xs text-green-100 leading-relaxed bg-green-500/10 rounded-md px-4 py-3 border border-green-500/30 font-sans">{v.recommendation}</p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          </AnimatePresence>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return rows;
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </motion.div>
 
+      {/* AI Analysis Section */}
       {aiError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 text-sm">{aiError}</div>
+        <motion.div variants={itemVariants} className="bg-red-500/10 border border-red-500/50 text-red-400 rounded-lg p-4 text-sm font-mono flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          {aiError}
+        </motion.div>
       )}
 
       {aiResult && (
-        <div className="space-y-4">
-          <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg shadow p-5 text-white">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold">Analisis por Claude AI (Haiku)</h3>
-              <span className={`text-xs font-bold px-3 py-1 rounded-full ${RISK_STYLE[aiResult.analysis.riskLevel]}`}>
-                Riesgo: {aiResult.analysis.riskLevel}
-              </span>
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6 mt-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Brain className="w-6 h-6 text-purple-400" />
+            <h3 className="text-2xl font-bold tracking-tight text-white drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]">
+              REPORTE DE INTELIGENCIA AI
+            </h3>
+          </div>
+
+          <motion.div variants={itemVariants} className="bg-gradient-to-r from-purple-900/40 to-slate-900/40 border border-purple-500/30 rounded-xl p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-mono text-purple-400 mb-1">OBJETIVO ANALIZADO</p>
+                <p className="text-sm text-gray-200 font-mono">{aiResult.targetUrl}</p>
+              </div>
+              <div className={`px-4 py-2 rounded-md border font-mono text-sm font-bold flex items-center gap-2 ${RISK_STYLE[aiResult.analysis.riskLevel]}`}>
+                NIVEL DE RIESGO: {aiResult.analysis.riskLevel}
+              </div>
             </div>
-            <p className="text-xs text-purple-200">{aiResult.targetUrl}</p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <motion.div variants={itemVariants} className="glass-panel rounded-xl p-6 border border-slate-700/50">
+              <h4 className="text-xs font-mono text-cyan-400 mb-4 border-b border-slate-700 pb-2">1. RESUMEN EJECUTIVO</h4>
+              <p className="text-sm text-gray-300 leading-relaxed font-sans whitespace-pre-wrap">{aiResult.analysis.summary}</p>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="glass-panel rounded-xl p-6 border border-slate-700/50">
+              <h4 className="text-xs font-mono text-cyan-400 mb-4 border-b border-slate-700 pb-2">2. SUPERFICIE DE ATAQUE (STACK)</h4>
+              <p className="text-sm text-gray-300 leading-relaxed font-sans">{aiResult.analysis.stackAnalysis}</p>
+            </motion.div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-5">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">1. Resumen Ejecutivo</h4>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{aiResult.analysis.summary}</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-5">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">2. Analisis del Stack Tecnologico</h4>
-            <p className="text-sm text-gray-700 leading-relaxed">{aiResult.analysis.stackAnalysis}</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-5">
-            <h4 className="text-sm font-semibold text-gray-700 mb-4">3. Vulnerabilidades Adicionales Probables</h4>
-            <div className="space-y-3">
+          <motion.div variants={itemVariants} className="glass-panel rounded-xl p-6 border border-slate-700/50">
+            <h4 className="text-xs font-mono text-cyan-400 mb-4 border-b border-slate-700 pb-2">3. VECTORES DE ATAQUE POTENCIALES</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {aiResult.analysis.additionalVulnerabilities.map((v, i) => (
-                <div key={i} className="border border-orange-100 rounded-lg p-4 bg-orange-50">
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <p className="text-sm font-semibold text-gray-800">{v.name}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${v.likelihood === 'HIGH' ? 'bg-red-100 text-red-700' : v.likelihood === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
-                      {v.likelihood} prob.
+                <div key={i} className="bg-slate-900/50 border border-slate-700 rounded-lg p-5 hover:border-orange-500/30 transition-colors">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <p className="text-sm font-bold text-gray-200 font-mono">{v.name}</p>
+                    <span className={`text-[10px] px-2 py-1 rounded-sm font-mono font-bold border ${v.likelihood === 'HIGH' ? 'bg-red-500/10 text-red-400 border-red-500/30' : v.likelihood === 'MEDIUM' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-green-500/10 text-green-400 border-green-500/30'}`}>
+                      PROB: {v.likelihood}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 mb-1.5">{v.description}</p>
-                  <p className="text-xs text-gray-500 italic">Por que es probable: {v.reason}</p>
-                  <p className="text-xs text-green-700 mt-1.5 bg-white rounded px-2 py-1 border border-green-200">{v.recommendation}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-5">
-            <h4 className="text-sm font-semibold text-gray-700 mb-4">4. Escenarios de Ataque Reales</h4>
-            <div className="space-y-2">
-              {aiResult.analysis.attackScenarios.map((scenario, i) => (
-                <div key={i} className="flex gap-3 items-start bg-red-50 border border-red-100 rounded-lg px-4 py-3">
-                  <span className="text-red-400 text-sm flex-shrink-0">!</span>
-                  <p className="text-sm text-gray-700">{scenario}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-5">
-            <h4 className="text-sm font-semibold text-gray-700 mb-4">5. Plan de Remediacion Priorizado</h4>
-            <div className="space-y-2">
-              {aiResult.analysis.remediationPriority.map((item) => (
-                <div key={item.order} className="flex gap-3 items-start border border-gray-100 rounded-lg px-4 py-3 hover:bg-gray-50">
-                  <span className="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">{item.order}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-800">{item.action}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{item.impact}</p>
+                  <p className="text-xs text-gray-400 mb-2 font-sans">{v.description}</p>
+                  <p className="text-xs text-slate-500 italic mb-3">Razón: {v.reason}</p>
+                  <div className="bg-green-900/20 border border-green-500/20 rounded-md p-2 mt-auto">
+                    <p className="text-xs text-green-400 font-mono"><span className="font-bold">Mitigación:</span> {v.recommendation}</p>
                   </div>
-                  <span className={`text-xs font-medium flex-shrink-0 ${EFFORT_STYLE[item.effort]}`}>Esfuerzo: {item.effort}</span>
                 </div>
               ))}
             </div>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <motion.div variants={itemVariants} className="glass-panel rounded-xl p-6 border border-slate-700/50">
+              <h4 className="text-xs font-mono text-red-400 mb-4 border-b border-red-900/30 pb-2">4. ESCENARIOS DE EXPLOTACIÓN</h4>
+              <div className="space-y-3">
+                {aiResult.analysis.attackScenarios.map((scenario, i) => (
+                  <div key={i} className="flex gap-3 items-start bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3">
+                    <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-gray-300 font-sans">{scenario}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div variants={itemVariants} className="glass-panel rounded-xl p-6 border border-slate-700/50">
+              <h4 className="text-xs font-mono text-green-400 mb-4 border-b border-green-900/30 pb-2">5. PROTOCOLO DE REMEDIACIÓN PRIORIZADO</h4>
+              <div className="space-y-3">
+                {aiResult.analysis.remediationPriority.map((item) => (
+                  <div key={item.order} className="flex gap-4 items-start bg-slate-900/50 border border-slate-700 rounded-lg p-4">
+                    <span className="w-6 h-6 bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 rounded-sm flex items-center justify-center text-xs font-mono font-bold flex-shrink-0">
+                      {item.order}
+                    </span>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-gray-200 font-mono mb-1">{item.action}</p>
+                      <p className="text-xs text-gray-400 font-sans">{item.impact}</p>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] text-gray-500 font-mono uppercase mb-1">Esfuerzo</span>
+                      <span className={`text-xs font-bold font-mono ${EFFORT_STYLE[item.effort]}`}>{item.effort}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
+

@@ -1,6 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, Download, Trash2, FileOutput, Loader2, PlusCircle, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Execution {
   id: string;
@@ -19,6 +22,11 @@ interface Report {
   mediumCount: number;
   lowCount: number;
 }
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 }
+};
 
 export default function ReportesPage() {
   const [executions, setExecutions] = useState<Execution[]>([]);
@@ -67,19 +75,40 @@ export default function ReportesPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800">Generacion de Reportes</h2>
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex items-center gap-3 mb-6"
+      >
+        <div className="p-2 bg-neon-purple/20 rounded-lg border border-neon-purple/50">
+          <FileText className="w-6 h-6 text-neon-purple" />
+        </div>
+        <h2 className="text-2xl font-bold text-white tracking-wider drop-shadow-[0_0_8px_rgba(188,19,254,0.5)]">
+          Generación de Reportes
+        </h2>
+      </motion.div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Generar Nuevo Reporte</h3>
-        <div className="flex gap-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-panel p-6 border-l-4 border-l-neon-purple relative overflow-hidden"
+      >
+        <div className="absolute -right-10 -top-10 w-32 h-32 bg-neon-purple/10 rounded-full blur-3xl pointer-events-none" />
+        
+        <h3 className="text-lg font-semibold mb-4 text-gray-200 flex items-center gap-2">
+          <FileOutput className="w-5 h-5 text-neon-purple" />
+          Generar Nuevo Reporte
+        </h3>
+        
+        <div className="flex flex-col md:flex-row gap-4">
           <select
             value={selectedExecution}
             onChange={e => setSelectedExecution(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 bg-black/50 border border-gray-700/50 rounded-md px-4 py-3 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-neon-purple/50 focus:border-neon-purple transition-all"
           >
-            <option value="">Seleccionar ejecucion completada...</option>
+            <option value="" className="bg-gray-900 text-gray-400">Seleccionar ejecución completada...</option>
             {executions.map(e => (
-              <option key={e.id} value={e.id}>
+              <option key={e.id} value={e.id} className="bg-gray-900 text-gray-200">
                 {e.scanConfig?.name} — {e.totalVulnerabilities} vulns — {new Date(e.createdAt).toLocaleDateString()}
               </option>
             ))}
@@ -87,53 +116,110 @@ export default function ReportesPage() {
           <button
             onClick={generate}
             disabled={!selectedExecution || generating}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            className={cn(
+              "flex items-center justify-center gap-2 px-6 py-3 rounded-md text-sm font-medium transition-all min-w-[200px]",
+              !selectedExecution || generating
+                ? "bg-gray-800/50 text-gray-500 cursor-not-allowed border border-gray-700/50"
+                : "bg-neon-purple/20 text-neon-purple border border-neon-purple/50 hover:bg-neon-purple hover:text-white hover:shadow-[0_0_15px_rgba(188,19,254,0.5)]"
+            )}
           >
-            {generating ? 'Generando...' : 'Generar Reporte HTML'}
+            {generating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Generando...</span>
+              </>
+            ) : (
+              <>
+                <PlusCircle className="w-4 h-4" />
+                <span>Generar Reporte HTML</span>
+              </>
+            )}
           </button>
         </div>
         {executions.length === 0 && (
-          <p className="text-sm text-gray-400 mt-3">No hay ejecuciones completadas disponibles.</p>
+          <p className="text-sm text-gray-400/70 mt-3 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" /> No hay ejecuciones completadas disponibles.
+          </p>
         )}
-      </div>
+      </motion.div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Reportes Generados</h3>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="glass-panel p-6"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-200 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-neon-cyan" />
+            Reportes Generados
+          </h3>
+          <button 
+            onClick={load}
+            className="p-2 text-gray-400 hover:text-neon-cyan transition-colors"
+            title="Actualizar lista"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+        </div>
+
         {reports.length === 0 ? (
-          <p className="text-gray-500 text-sm">No hay reportes generados aun.</p>
+          <div className="flex flex-col items-center justify-center py-12 text-gray-500 border border-dashed border-gray-700/50 rounded-lg bg-black/20">
+            <FileText className="w-12 h-12 mb-3 text-gray-600/50" />
+            <p className="text-sm">No hay reportes generados aún.</p>
+          </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <motion.div 
+            initial="hidden"
+            animate="visible"
+            variants={{
+              visible: { transition: { staggerChildren: 0.05 } }
+            }}
+            className="grid gap-4"
+          >
             {reports.map(r => (
-              <div key={r.id} className="flex items-center justify-between py-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">{r.title}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{new Date(r.generatedAt).toLocaleString()}</p>
-                  <div className="flex gap-3 mt-1 text-xs">
-                    <span className="text-gray-500">Total: <strong>{r.totalVulnerabilities}</strong></span>
-                    <span className="text-red-600">Alta: <strong>{r.highCount}</strong></span>
-                    <span className="text-yellow-600">Media: <strong>{r.mediumCount}</strong></span>
-                    <span className="text-green-600">Baja: <strong>{r.lowCount}</strong></span>
+              <motion.div 
+                variants={itemVariants}
+                key={r.id} 
+                className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-black/40 border border-gray-800/60 rounded-lg hover:border-gray-700 transition-colors group"
+              >
+                <div className="mb-4 md:mb-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileText className="w-4 h-4 text-neon-purple" />
+                    <p className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors">{r.title}</p>
+                  </div>
+                  <p className="text-xs text-gray-500 font-mono mb-2">{new Date(r.generatedAt).toLocaleString()}</p>
+                  
+                  <div className="flex gap-3 text-xs bg-black/50 px-3 py-1.5 rounded-full inline-flex border border-gray-800/80">
+                    <span className="text-gray-400">Total: <strong className="text-gray-200">{r.totalVulnerabilities}</strong></span>
+                    <span className="text-gray-500">|</span>
+                    <span className="text-red-400/80">Alta: <strong className="text-red-400">{r.highCount}</strong></span>
+                    <span className="text-yellow-400/80">Media: <strong className="text-yellow-400">{r.mediumCount}</strong></span>
+                    <span className="text-green-400/80">Baja: <strong className="text-green-400">{r.lowCount}</strong></span>
                   </div>
                 </div>
+                
                 <div className="flex gap-2">
                   <button
                     onClick={() => download(r.id, r.title)}
-                    className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-md text-xs hover:bg-blue-100 font-medium"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 px-4 py-2 rounded-md text-xs hover:bg-neon-cyan hover:text-black font-medium transition-all"
                   >
+                    <Download className="w-4 h-4" />
                     Descargar HTML
                   </button>
                   <button
                     onClick={() => deleteReport(r.id)}
-                    className="bg-red-50 text-red-600 px-3 py-1.5 rounded-md text-xs hover:bg-red-100"
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-red-500/10 text-red-500 border border-red-500/30 px-4 py-2 rounded-md text-xs hover:bg-red-500 hover:text-white transition-all"
                   >
-                    Eliminar
+                    <Trash2 className="w-4 h-4" />
+                    <span className="md:hidden">Eliminar</span>
                   </button>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }
